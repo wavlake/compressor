@@ -1,9 +1,14 @@
 const config = require("dotenv").config();
 const Lame = require("node-lame").Lame;
+const AWS = require("aws-sdk");
 const fs = require("fs");
-const { getFromS3, uploadS3 } = require("./s3Client");
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
+
+const s3 = new AWS.S3({
+  apiVersion: "2006-03-01",
+  region: "us-east-2",
+});
 
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
 const trackPrefix = `${process.env.AWS_S3_TRACK_PREFIX}`;
@@ -43,6 +48,7 @@ exports.handler = async function (event, context) {
   const localFilePath = `${localUploadPath}/${object}`;
   const localMP3Path = `${localConvertPath}/${objectId}.mp3`;
 
+  log.debug("Downloading file from S3");
   await getFromS3(objectKey, localFilePath);
 
   const encoder = new Lame({
@@ -67,7 +73,7 @@ exports.handler = async function (event, context) {
       Body: fs.readFileSync(localMP3Path),
       ContentType: "audio/mpeg",
     };
-    uploadS3(object, (err, data) => {
+    return uploadS3(object, (err, data) => {
       if (err) {
         log.debug(`Error uploading ${key} to S3: ${err}`);
       } else {
@@ -76,3 +82,35 @@ exports.handler = async function (event, context) {
     });
   });
 };
+
+// S3 helpers
+async function getFromS3(objectKey, localFilePath) {
+  const params = {
+    Bucket: s3BucketName,
+    Key: objectKey,
+  };
+
+  log.debug(`Downloading ${objectKey} from S3`);
+  // Download file
+  const content = (await s3.getObject(params).promise()).Body;
+
+  // Write file
+  fs.writeFile(localFilePath, content, (err) => {
+    if (err) {
+      log.debug(err);
+    } else {
+      return;
+    }
+  });
+}
+
+async function uploadS3(object) {
+  log.debug(`Uploading ${object.Key} to S3`);
+  return s3
+    .upload(object, (err, data) => {
+      if (err) {
+        log.debug(`Error uploading to S3: ${err}`);
+      }
+    })
+    .promise();
+}

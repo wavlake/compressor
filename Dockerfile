@@ -1,0 +1,19 @@
+FROM public.ecr.aws/lambda/nodejs:18
+
+# Set up system dependencies
+RUN yum install -y wget tar gzip gcc make
+RUN wget https://wavlake-lib-repo.s3.us-east-2.amazonaws.com/lame-3.100.tar.gz
+RUN tar -xvf lame-3.100.tar.gz
+RUN cd lame-3.100 && ./configure && make && make install
+
+# Copy function code and install dependencies
+RUN cd ${LAMBDA_TASK_ROOT}
+COPY index.js ${LAMBDA_TASK_ROOT}
+COPY s3Client.js ${LAMBDA_TASK_ROOT}
+COPY package.json ${LAMBDA_TASK_ROOT}
+COPY package-lock.json ${LAMBDA_TASK_ROOT}
+COPY .env ${LAMBDA_TASK_ROOT}
+RUN npm install --omit=dev
+
+# Set the CMD to your handler (could also be done as a parameter override outside of the Dockerfile)
+CMD [ "index.handler" ]
