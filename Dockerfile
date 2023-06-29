@@ -9,7 +9,6 @@ RUN cd lame-3.100 && ./configure && make && make install
 # Copy function code and install dependencies
 RUN cd ${LAMBDA_TASK_ROOT}
 COPY index.js ${LAMBDA_TASK_ROOT}
-COPY s3Client.js ${LAMBDA_TASK_ROOT}
 COPY package.json ${LAMBDA_TASK_ROOT}
 COPY package-lock.json ${LAMBDA_TASK_ROOT}
 COPY .env ${LAMBDA_TASK_ROOT}

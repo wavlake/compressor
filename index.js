@@ -49,68 +49,71 @@ exports.handler = async function (event, context) {
   const localMP3Path = `${localConvertPath}/${objectId}.mp3`;
 
   log.debug("Downloading file from S3");
-  await getFromS3(objectKey, localFilePath);
+  const getObject = () => {
+    return new Promise((resolve, reject) => {
+      const params = {
+        Bucket: s3BucketName,
+        Key: objectKey,
+      };
 
-  const encoder = new Lame({
-    output: localMP3Path,
-    bitrate: 128,
-    mode: "j",
-    // TODO: Add metadata support
-    // meta: {
-    //   title: request.title,
-    //   artist: request.artistName,
-    //   album: request.albumName,
-    //   comment: "Wavlake",
-    // },
-  }).setFile(localFilePath);
+      log.debug(`Downloading ${objectKey} from S3`);
+      // Download file
+      const content = s3.getObject(params, function (err, data) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(data);
+        }
+      });
+    });
+  };
 
-  const s3Key = `${trackPrefix}/${objectId}.mp3`;
-
-  await encoder.encode().then(() => {
-    const object = {
-      Bucket: s3BucketName,
-      Key: s3Key,
-      Body: fs.readFileSync(localMP3Path),
-      ContentType: "audio/mpeg",
-    };
-    return uploadS3(object, (err, data) => {
+  // Write file
+  await getObject().then((data) => {
+    fs.writeFile(localFilePath, data.Body, (err) => {
       if (err) {
-        log.debug(`Error uploading ${key} to S3: ${err}`);
+        log.debug(err);
       } else {
-        log.debug(`Track ${objectId} uploaded to S3 ${data.Location}`);
+        const encoder = new Lame({
+          output: localMP3Path,
+          bitrate: 128,
+          mode: "j",
+          // TODO: Add metadata support
+          // meta: {
+          //   title: request.title,
+          //   artist: request.artistName,
+          //   album: request.albumName,
+          //   comment: "Wavlake",
+          // },
+        }).setFile(localFilePath);
+
+        const s3Key = `${trackPrefix}/${objectId}.mp3`;
+
+        encoder.encode().then(() => {
+          const object = {
+            Bucket: s3BucketName,
+            Key: s3Key,
+            Body: fs.readFileSync(localMP3Path),
+            ContentType: "audio/mpeg",
+          };
+          return uploadS3(object, (err, data) => {
+            if (err) {
+              log.debug(`Error uploading ${key} to S3: ${err}`);
+            } else {
+              log.debug(`Track ${objectId} uploaded to S3 ${data.Location}`);
+            }
+          });
+        });
       }
     });
   });
 };
 
-// S3 helpers
-async function getFromS3(objectKey, localFilePath) {
-  const params = {
-    Bucket: s3BucketName,
-    Key: objectKey,
-  };
-
-  log.debug(`Downloading ${objectKey} from S3`);
-  // Download file
-  const content = (await s3.getObject(params).promise()).Body;
-
-  // Write file
-  fs.writeFile(localFilePath, content, (err) => {
+function uploadS3(object) {
+  log.debug(`Uploading ${object.Key} to S3`);
+  return s3.upload(object, (err, data) => {
     if (err) {
-      log.debug(err);
-    } else {
-      return;
+      log.debug(`Error uploading to S3: ${err}`);
     }
   });
-}
-
-async function uploadS3(object) {
-  log.debug(`Uploading ${object.Key} to S3`);
-  return s3
-    .upload(object, (err, data) => {
-      if (err) {
-        log.debug(`Error uploading to S3: ${err}`);
-      }
-    })
-    .promise();
 }
