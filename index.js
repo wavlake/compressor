@@ -69,42 +69,51 @@ exports.handler = async function (event, context) {
   };
 
   // Write file
-  await getObject().then((data) => {
+  const data = await getObject();
+
+  await new Promise((resolve, reject) => {
     fs.writeFile(localFilePath, data.Body, (err) => {
       if (err) {
         log.debug(err);
+        reject();
       } else {
-        const encoder = new Lame({
-          output: localMP3Path,
-          bitrate: 128,
-          mode: "j",
-          // TODO: Add metadata support
-          // meta: {
-          //   title: request.title,
-          //   artist: request.artistName,
-          //   album: request.albumName,
-          //   comment: "Wavlake",
-          // },
-        }).setFile(localFilePath);
-
-        const s3Key = `${trackPrefix}/${objectId}.mp3`;
-
-        encoder.encode().then(() => {
-          const object = {
-            Bucket: s3BucketName,
-            Key: s3Key,
-            Body: fs.readFileSync(localMP3Path),
-            ContentType: "audio/mpeg",
-          };
-          return uploadS3(object, (err, data) => {
-            if (err) {
-              log.debug(`Error uploading ${key} to S3: ${err}`);
-            } else {
-              log.debug(`Track ${objectId} uploaded to S3 ${data.Location}`);
-            }
-          });
-        });
+        resolve();
       }
+    });
+  }).then(() => {
+    const encoder = new Lame({
+      output: localMP3Path,
+      bitrate: 128,
+      mode: "j",
+      // TODO: Add metadata support
+      // meta: {
+      //   title: request.title,
+      //   artist: request.artistName,
+      //   album: request.albumName,
+      //   comment: "Wavlake",
+      // },
+    }).setFile(localFilePath);
+
+    const s3Key = `${trackPrefix}/${objectId}.mp3`;
+
+    return new Promise((resolve, reject) => {
+      encoder.encode().then(() => {
+        const object = {
+          Bucket: s3BucketName,
+          Key: s3Key,
+          Body: fs.readFileSync(localMP3Path),
+          ContentType: "audio/mpeg",
+        };
+        return uploadS3(object, (err, data) => {
+          if (err) {
+            log.debug(`Error uploading ${key} to S3: ${err}`);
+            reject(err);
+          } else {
+            log.debug(`Track ${objectId} uploaded to S3 ${data.Location}`);
+            resolve();
+          }
+        });
+      });
     });
   });
 };
