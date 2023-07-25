@@ -4,6 +4,8 @@ const AWS = require("aws-sdk");
 const fs = require("fs");
 const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
+const db = require("./db");
+const mp3Duration = require("mp3-duration");
 
 const s3 = new AWS.S3({
   apiVersion: "2006-03-01",
@@ -71,31 +73,37 @@ exports.handler = async function (event, context) {
   // Write file
   const data = await getObject();
 
-  await new Promise((resolve, reject) => {
-    fs.writeFile(localFilePath, data.Body, (err) => {
-      if (err) {
-        log.debug(err);
-        reject();
-      } else {
-        resolve();
-      }
+  const copyToLocal = () => {
+    return new Promise((resolve, reject) => {
+      fs.writeFile(localFilePath, data.Body, (err) => {
+        if (err) {
+          log.debug(err);
+          reject();
+        } else {
+          resolve();
+        }
+      });
     });
-  }).then(() => {
-    const encoder = new Lame({
-      output: localMP3Path,
-      bitrate: 128,
-      mode: "j",
-      // TODO: Add metadata support
-      // meta: {
-      //   title: request.title,
-      //   artist: request.artistName,
-      //   album: request.albumName,
-      //   comment: "Wavlake",
-      // },
-    }).setFile(localFilePath);
+  };
 
-    const s3Key = `${trackPrefix}/${objectId}.mp3`;
+  const localCopy = await copyToLocal();
 
+  const encoder = new Lame({
+    output: localMP3Path,
+    bitrate: 128,
+    mode: "j",
+    // TODO: Add metadata support
+    // meta: {
+    //   title: request.title,
+    //   artist: request.artistName,
+    //   album: request.albumName,
+    //   comment: "Wavlake",
+    // },
+  }).setFile(localFilePath);
+
+  const s3Key = `${trackPrefix}/${objectId}.mp3`;
+
+  const encodeFile = () => {
     return new Promise((resolve, reject) => {
       encoder.encode().then(() => {
         const object = {
@@ -104,25 +112,45 @@ exports.handler = async function (event, context) {
           Body: fs.readFileSync(localMP3Path),
           ContentType: "audio/mpeg",
         };
-        return uploadS3(object, (err, data) => {
-          if (err) {
-            log.debug(`Error uploading ${key} to S3: ${err}`);
-            reject(err);
-          } else {
-            log.debug(`Track ${objectId} uploaded to S3 ${data.Location}`);
-            resolve();
-          }
-        });
+        resolve(object);
       });
     });
-  });
-};
+  };
 
-function uploadS3(object) {
-  log.debug(`Uploading ${object.Key} to S3`);
-  return s3.upload(object, (err, data) => {
-    if (err) {
-      log.debug(`Error uploading to S3: ${err}`);
-    }
-  });
-}
+  const encodedFile = await encodeFile();
+
+  const uploadFile = () => {
+    return new Promise((resolve, reject) => {
+      return s3.upload(encodedFile, (err, data) => {
+        if (err) {
+          log.debug(`Error uploading to S3: ${err}`);
+          reject(err);
+        }
+        console.log(data);
+        resolve(data);
+      });
+    });
+  };
+
+  const uploaded = await uploadFile();
+
+  const duration = await mp3Duration(`${localMP3Path}`);
+  const fileStats = await fs.promises.stat(`${localMP3Path}`);
+
+  return db
+    .knex("track")
+    .update({
+      is_processing: false,
+      duration: parseInt(duration),
+      size: fileStats.size,
+      updated_at: db.knex.fn.now(),
+    })
+    .where({ id: `${objectId}` })
+    .then((result) => {
+      // log.debug(result);
+      log.debug(`Db updated for track:${objectId}`);
+    })
+    .catch((err) => {
+      log.debug(err);
+    });
+};

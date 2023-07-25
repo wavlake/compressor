@@ -24,10 +24,10 @@
           "ownerIdentity": {
             "principalId": "A3NL1KOZZKExample"
           },
-          "arn": "arn:aws:s3:::mybucket"
+          "arn": "arn:aws:s3:::staging-wavlake-media"
         },
         "object": {
-          "key": "raw/35555b8d-a1cc-4d2c-8b99-cff6e7ec73e8.wav",
+          "key": "raw/c31a67c5-9748-409c-af1c-726c6d118c50.mp3",
           "size": 1024,
           "eTag": "d41d8cd98f00b204e9800998ecf8427e",
           "versionId": "096fKKXTRTtl3on89fVO.nfljtsv6qko",
