@@ -24,15 +24,30 @@ Use `aws configure` and set the proper access key and secret on your local machi
 
 ### build
 
-`docker build -t compressor .`
+`docker build -f Dockerfile.staging -t compressor-staging .`
+
+For Prod:
+
+`docker build -f Dockerfile.prod -t compressor-prod .`
 
 ### tag
 
-`docker tag compressor <aws-account-id>.dkr.ecr.<region>.amazonaws.com/compressor:latest`
+`docker tag compressor-staging <aws-account-id>.dkr.ecr.<region>.amazonaws.com/compressor-staging:latest`
+
+For Prod:
+
+`docker tag compressor-prod <aws-account-id>.dkr.ecr.<region>.amazonaws.com/compressor-prod:latest`
 
 ### push
 
-`docker push <aws-account-id>.dkr.ecr.<region>.amazonaws.com/compressor:latest`
+`docker push <aws-account-id>.dkr.ecr.<region>.amazonaws.com/compressor-staging:latest`
+
+For Prod:
+
+`docker push <aws-account-id>.dkr.ecr.<region>.amazonaws.com/compressor-prod:latest`
+
+To get authorization token:
+`aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin <aws-account-id>.dkr.ecr.<region>.amazonaws.com`
 
 Guide: https://docs.aws.amazon.com/lambda/latest/dg/nodejs-image.html#nodejs-image-instructions
 
