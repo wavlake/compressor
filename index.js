@@ -134,7 +134,6 @@ exports.handler = Sentry.AWSLambda.wrapHandler(async (event, context) => {
           log.debug(`Error uploading to S3: ${err}`);
           reject(err);
         }
-        console.log(data);
         resolve(data);
       });
     });
@@ -144,6 +143,15 @@ exports.handler = Sentry.AWSLambda.wrapHandler(async (event, context) => {
 
   const duration = await mp3Duration(`${localMP3Path}`);
   const fileStats = await fs.promises.stat(`${localMP3Path}`);
+
+  // Synchronously clean up temp storage dirs
+  fs.rm(localConvertPath, { recursive: true, force: true }, (err) => {
+    if (err) throw err;
+  });
+
+  fs.rm(localUploadPath, { recursive: true, force: true }, (err) => {
+    if (err) throw err;
+  });
 
   return db
     .knex("track")
