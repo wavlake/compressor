@@ -6,6 +6,8 @@ RUN wget https://wavlake-lib-repo.s3.us-east-2.amazonaws.com/lame-3.100.tar.gz
 RUN tar -xvf lame-3.100.tar.gz
 RUN cd lame-3.100 && ./configure && make && make install
 
+ENV NODE_ENV=staging
+
 # Copy function code and install dependencies
 RUN cd ${LAMBDA_TASK_ROOT}
 COPY index.js ${LAMBDA_TASK_ROOT}

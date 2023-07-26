@@ -6,10 +6,18 @@ const log = require("loglevel");
 log.setLevel(process.env.LOGLEVEL);
 const db = require("./db");
 const mp3Duration = require("mp3-duration");
+const Sentry = require("@sentry/serverless");
 
 const s3 = new AWS.S3({
   apiVersion: "2006-03-01",
   region: "us-east-2",
+});
+
+Sentry.AWSLambda.init({
+  dsn: `${process.env.SENTRY_DSN}`,
+
+  // Performance Monitoring
+  tracesSampleRate: 1.0, // Capture 100% of the transactions, reduce in production!,
 });
 
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
@@ -18,7 +26,7 @@ const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const localUploadPath = `${process.env.LOCAL_UPLOAD_PATH}`;
 
 // Handler
-exports.handler = async function (event, context) {
+exports.handler = Sentry.AWSLambda.wrapHandler(async (event, context) => {
   // Synchronously create tmp storage dirs
   fs.mkdirSync(localConvertPath, { recursive: true }, (err) => {
     if (err) throw err;
@@ -159,4 +167,4 @@ exports.handler = async function (event, context) {
     .catch((err) => {
       log.debug(err);
     });
-};
+});
