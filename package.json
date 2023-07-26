@@ -7,7 +7,7 @@
     "node": ">=18.0.0 <19.0.0"
   },
   "scripts": {
-    "test": "jest --testTimeout=15000 --detectOpenHandles"
+    "test": "NODE_ENV=dev jest --testTimeout=15000 --detectOpenHandles"
   },
   "repository": {
     "type": "git",
