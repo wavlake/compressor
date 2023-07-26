@@ -139,15 +139,21 @@ exports.handler = async function (event, context) {
 
   return db
     .knex("track")
-    .update({
-      is_processing: false,
-      duration: parseInt(duration),
-      size: fileStats.size,
-      updated_at: db.knex.fn.now(),
-    })
+    .update(
+      {
+        is_processing: false,
+        duration: parseInt(duration),
+        size: fileStats.size,
+        updated_at: db.knex.fn.now(),
+      },
+      ["id"]
+    )
     .where({ id: `${objectId}` })
-    .then((result) => {
-      // log.debug(result);
+    .then((data) => {
+      if (data.length === 0) {
+        log.debug(`No track found for id:${objectId}`);
+        return;
+      }
       log.debug(`Db updated for track:${objectId}`);
     })
     .catch((err) => {
