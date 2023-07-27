@@ -177,8 +177,6 @@ exports.handler = Sentry.AWSLambda.wrapHandler(
           if (data.length === 0) {
             log.debug(`No track found for id:${objectId}`);
             return "compressor error";
-
-            return;
           }
           log.debug(`Db updated for track:${objectId}`);
           return "compressor success";
