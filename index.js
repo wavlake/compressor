@@ -165,6 +165,7 @@ exports.handler = Sentry.AWSLambda.wrapHandler(
         .update(
           {
             is_processing: false,
+            compressor_error: false,
             duration: parseInt(duration),
             size: fileStats.size,
             updated_at: db.knex.fn.now(),
@@ -198,7 +199,7 @@ exports.handler = Sentry.AWSLambda.wrapHandler(
         .update(
           {
             is_processing: false,
-            compressor_error: err,
+            compressor_error: true,
             updated_at: db.knex.fn.now(),
           },
           ["id"]
