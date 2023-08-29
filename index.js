@@ -41,33 +41,24 @@ const parseEvent = (event) => {
   return { objectId, objectKey, object };
 };
 
-const getPrefix = (objectId) => {
-  const track = checkIfTrackExists(objectId);
-
-  if (track) {
-    log.debug(`Track found for id:${objectId}`);
-    return { prefix: trackPrefix, table: "track" };
-  }
-  log.debug(`No track found for id:${objectId}, assuming episode`);
-  return { prefix: episodePrefix, table: "episode" };
-};
-
-const checkIfTrackExists = (objectId) => {
-  return db
-    .knex("track")
-    .select("id")
-    .where({ id: `${objectId}` })
-    .then((data) => {
-      if (data.length === 0) {
-        return false;
-      }
-      return true;
-    })
-    .catch((err) => {
-      console.error(err);
-      return false;
-    });
-};
+async function checkIfTrackExists(objectId) {
+  return new Promise((resolve, reject) => {
+    return db
+      .knex("track")
+      .select("id")
+      .where({ id: `${objectId}` })
+      .then((data) => {
+        if (data.length === 0) {
+          resolve(false);
+        }
+        resolve(true);
+      })
+      .catch((err) => {
+        console.error(err);
+        reject(err);
+      });
+  });
+}
 
 // Handler
 exports.handler = Sentry.AWSLambda.wrapHandler(
@@ -90,6 +81,12 @@ exports.handler = Sentry.AWSLambda.wrapHandler(
         log.debug("No UUID found in key");
         return;
       }
+
+      const track = await checkIfTrackExists(objectId);
+
+      const { prefix, table } = track
+        ? { prefix: trackPrefix, table: "track" }
+        : { prefix: episodePrefix, table: "episode" };
 
       const localFilePath = `${localUploadPath}/${object}`;
       const localMP3Path = `${localConvertPath}/${objectId}.mp3`;
@@ -145,7 +142,6 @@ exports.handler = Sentry.AWSLambda.wrapHandler(
         // },
       }).setFile(localFilePath);
 
-      const { prefix, table } = await getPrefix(objectId);
       const s3Key = `${prefix}/${objectId}.mp3`;
 
       const encodeFile = () => {
