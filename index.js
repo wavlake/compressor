@@ -21,7 +21,8 @@ Sentry.AWSLambda.init({
 });
 
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
-const trackPrefix = `${process.env.AWS_S3_TRACK_PREFIX}`;
+const trackPrefix = `track`;
+const episodePrefix = `episode`;
 const localConvertPath = `${process.env.LOCAL_CONVERT_PATH}`;
 const localUploadPath = `${process.env.LOCAL_UPLOAD_PATH}`;
 
@@ -38,6 +39,34 @@ const parseEvent = (event) => {
     /[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}/
   );
   return { objectId, objectKey, object };
+};
+
+const getPrefix = (objectId) => {
+  const track = checkIfTrackExists(objectId);
+
+  if (track) {
+    log.debug(`Track found for id:${objectId}`);
+    return trackPrefix;
+  }
+  log.debug(`No track found for id:${objectId}, assuming episode`);
+  return episodePrefix;
+};
+
+const checkIfTrackExists = (objectId) => {
+  return db
+    .knex("track")
+    .select("id")
+    .where({ id: `${objectId}` })
+    .then((data) => {
+      if (data.length === 0) {
+        return false;
+      }
+      return true;
+    })
+    .catch((err) => {
+      console.error(err);
+      return false;
+    });
 };
 
 // Handler
@@ -116,7 +145,8 @@ exports.handler = Sentry.AWSLambda.wrapHandler(
         // },
       }).setFile(localFilePath);
 
-      const s3Key = `${trackPrefix}/${objectId}.mp3`;
+      const prefix = await getPrefix(objectId);
+      const s3Key = `${prefix}/${objectId}.mp3`;
 
       const encodeFile = () => {
         return new Promise((resolve, reject) => {
