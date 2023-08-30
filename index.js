@@ -47,7 +47,7 @@ const getPrefix = async (objectId) => {
   if (track) {
     return { prefix: trackPrefix, table: "track" };
   }
-  // No track found, assuming episode`);
+  // No track found, assuming episode
   return { prefix: episodePrefix, table: "episode" };
 };
 
