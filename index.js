@@ -41,24 +41,32 @@ const parseEvent = (event) => {
   return { objectId, objectKey, object };
 };
 
-async function checkIfTrackExists(objectId) {
-  return new Promise((resolve, reject) => {
-    return db
-      .knex("track")
-      .select("id")
-      .where({ id: `${objectId}` })
-      .then((data) => {
-        if (data.length === 0) {
-          resolve(false);
-        }
-        resolve(true);
-      })
-      .catch((err) => {
-        console.error(err);
-        reject(err);
-      });
-  });
-}
+const getPrefix = async (objectId) => {
+  const track = await checkIfTrackExists(objectId);
+
+  if (track) {
+    return { prefix: trackPrefix, table: "track" };
+  }
+  // No track found, assuming episode`);
+  return { prefix: episodePrefix, table: "episode" };
+};
+
+const checkIfTrackExists = (objectId) => {
+  return db
+    .knex("track")
+    .select("id")
+    .where({ id: `${objectId}` })
+    .then((data) => {
+      if (data.length === 0) {
+        return false;
+      }
+      return true;
+    })
+    .catch((err) => {
+      console.error(err);
+      return false;
+    });
+};
 
 // Handler
 exports.handler = Sentry.AWSLambda.wrapHandler(
@@ -84,10 +92,7 @@ exports.handler = Sentry.AWSLambda.wrapHandler(
 
       const track = await checkIfTrackExists(objectId);
 
-      const { prefix, table } = track
-        ? { prefix: trackPrefix, table: "track" }
-        : { prefix: episodePrefix, table: "episode" };
-
+      const { prefix, table } = await getPrefix(objectId);
       const localFilePath = `${localUploadPath}/${object}`;
       const localMP3Path = `${localConvertPath}/${objectId}.mp3`;
 
