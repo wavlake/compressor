@@ -27,7 +27,7 @@
           "arn": "arn:aws:s3:::staging-wavlake-media"
         },
         "object": {
-          "key": "raw/3ed75f68-2a4d-4fc3-bee5-65587cb293d1.mp3",
+          "key": "raw/0779ffff-13c9-4f1b-a580-ab8a5dc66bf2.mp3",
           "size": 1024,
           "eTag": "d41d8cd98f00b204e9800998ecf8427e",
           "versionId": "096fKKXTRTtl3on89fVO.nfljtsv6qko",

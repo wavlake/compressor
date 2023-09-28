@@ -90,8 +90,6 @@ exports.handler = Sentry.AWSLambda.wrapHandler(
         return;
       }
 
-      const track = await checkIfTrackExists(objectId);
-
       const { prefix, table } = await getPrefix(objectId);
       const localFilePath = `${localUploadPath}/${object}`;
       const localMP3Path = `${localConvertPath}/${objectId}.mp3`;
@@ -136,8 +134,9 @@ exports.handler = Sentry.AWSLambda.wrapHandler(
 
       const encoder = new Lame({
         output: localMP3Path,
-        bitrate: 128,
-        mode: "j",
+        vbr: true,
+        // Set quality slightly higher for pure music
+        preset: table === "track" ? "standard" : "medium",
         // TODO: Add metadata support
         // meta: {
         //   title: request.title,
