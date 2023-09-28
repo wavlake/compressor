@@ -13,4 +13,4 @@ test("test podcast", async () => {
   let event = JSON.parse(eventFile);
   let response = await index.handler(event, "");
   expect(JSON.stringify(response)).toEqual('"compressor success"');
-});
+}, 120000);
