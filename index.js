@@ -13,11 +13,15 @@ const s3 = new AWS.S3({
   region: "us-east-2",
 });
 
+// Sentry is OFF (2026-11-07): the legacy platform no longer reports to
+// Sentry. `enabled: false` makes the SDK send nothing (no errors, no
+// transactions, no spans); wrapHandler and captureException become no-ops.
+// Guarded by sentryDisabled.test.mjs.
 Sentry.AWSLambda.init({
   dsn: `${process.env.SENTRY_DSN}`,
   environment: `${process.env.NODE_ENV}`,
-  // Performance Monitoring
-  tracesSampleRate: 1.0, // Capture 100% of the transactions, reduce in production!,
+  enabled: false,
+  tracesSampleRate: 0,
 });
 
 const s3BucketName = `${process.env.AWS_S3_BUCKET_NAME}`;
